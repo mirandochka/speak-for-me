@@ -285,20 +285,30 @@ window.addEventListener("resize", refit);
 window.addEventListener("orientationchange", () => setTimeout(refit, 200));
 
 /* ---------- speech ---------- */
+// iOS mutes web speech when the ring/silent switch is on. Asking for a "playback"
+// audio session and playing a silent clip from a tap routes sound past the switch.
+try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+const unlock = new Audio("silence.wav");
+unlock.playsInline = true;
 let voice = null;
 function pickVoice() {
-  const vs = speechSynthesis.getVoices().filter(v => v.lang.startsWith("en"));
-  voice = vs.find(v => /premium|enhanced/i.test(v.name) && /Ava|Samantha|Zoe|Allison|Susan/.test(v.name))
-       || vs.find(v => /Ava|Samantha|Zoe|Allison|Susan|Karen|Moira/.test(v.name))
-       || vs.find(v => v.localService) || vs[0] || null;
+  // only on-device voices: iOS lists downloadable voices that play silently
+  const vs = speechSynthesis.getVoices().filter(v => v.localService && /^en[-_]/i.test(v.lang));
+  voice = vs.find(v => /Samantha/.test(v.name)) || vs.find(v => /en[-_]US/i.test(v.lang)) || vs[0] || null;
 }
 if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function speak(text) {
   text = (text || "").trim(); if (!text) { toast("Type something first"); return; }
   if (!("speechSynthesis" in window)) { toast("Speech isn't supported here"); return; }
-  speechSynthesis.cancel();
+  unlock.play().catch(() => {});
+  // cancel() right before speak() makes Safari drop the new utterance
+  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+  speechSynthesis.resume();
   const u = new SpeechSynthesisUtterance(text);
-  if (voice) u.voice = voice; u.rate = 0.95;
+  u.lang = voice ? voice.lang : "en-US";
+  if (voice) u.voice = voice;
+  u.rate = 0.95; u.volume = 1;
+  u.onerror = e => { if (e.error !== "interrupted" && e.error !== "canceled") toast("Speech error: " + e.error); };
   speechSynthesis.speak(u); addRecent(text);
 }
 
