@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Speak For Me">
+<meta name="theme-color" content="#eef1f5">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<title>Speak For Me</title>
+<style>
+  :root {
+    --bg: #eef1f5; --card: #fff; --ink: #111a2b; --muted: #6b7280; --line: #dde2ea;
+    --rust: #b5471b; --peach: #fbe3d4; --yellow: #f5cf4a; --navy: #111a2b;
+    --slab: Rockwell, "Roboto Slab", "Zilla Slab", Georgia, serif;
+    --st: env(safe-area-inset-top); --sb: env(safe-area-inset-bottom);
+    --sl: env(safe-area-inset-left); --sr: env(safe-area-inset-right);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+  body { padding: calc(var(--st) + 14px) calc(var(--sr) + 16px) var(--sb) calc(var(--sl) + 16px);
+    display: flex; flex-direction: column; overflow: hidden; }
+  button { font-family: inherit; color: var(--ink); cursor: pointer; }
+  button:active { transform: scale(.97); }
+  svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  /* ---------- header ---------- */
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; background: var(--peach); color: var(--rust);
+    font-size: 12px; font-weight: 700; letter-spacing: .06em; padding: 6px 10px; border-radius: 20px;
+    white-space: nowrap; margin-top: 4px; }
+
+  /* ---------- composer card ---------- */
+  .compose { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 12px; }
+  .compose-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .label { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #374151; }
+  .mini { display: flex; gap: 6px; }
+  .mini button { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600;
+    background: none; border: 0; color: var(--rust); padding: 4px 6px; }
+  #input { width: 100%; min-height: 84px; max-height: 28vh; resize: none; font: inherit; font-size: 19px;
+    padding: 12px; border-radius: 12px; border: 1.5px solid transparent; background: #f4f6f9; color: var(--ink); }
+  #input::placeholder { color: #9aa1ab; }
+  #input:focus { outline: none; border-color: var(--rust); background: #fff; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 8px; margin-top: 10px; }
+  .actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 17px; font-weight: 700; padding: 13px 8px; border-radius: 12px;
+    background: #fff; border: 1.5px solid var(--line); }
+  .actions #speakBtn { border-color: var(--ink); }
+  .actions #showBtn { background: var(--rust); border-color: var(--rust); color: #fff; }
+
+  /* ---------- chips ---------- */
+  #tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 12px; }
+  #tabs button { font-size: 15px; font-weight: 600; padding: 9px 15px; border-radius: 22px;
+    background: #fff; border: 1px solid var(--line); }
+  #tabs button.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  /* ---------- phrase list ---------- */
+  #list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: grid; grid-template-columns: 1fr; grid-auto-rows: max-content; gap: 8px; padding-bottom: 20px; }
+  .phrase { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 15px 14px;
+    font-size: 18px; line-height: 1.3; }
+  .phrase span { flex: 1; }
+  .phrase svg { color: var(--muted); font-size: 17px; }
+  .phrase .del { color: var(--rust); font-size: 20px; padding: 0 2px; background: none; border: 0; }
+  .hint { color: var(--muted); font-size: 15px; padding: 8px 2px; }
+
+  /* ---------- landscape home: composer left, phrases right ---------- */
+  @media (orientation: landscape) {
+    body { display: grid; grid-template-columns: minmax(300px, 40%) 1fr; grid-template-rows: auto auto 1fr;
+      column-gap: 16px; padding-top: calc(var(--st) + 10px); }
+    header { grid-column: 1; grid-row: 1; }
+    .compose { grid-column: 1; grid-row: 2 / 4; align-self: start; }
+    #tabs { grid-column: 2; grid-row: 1; margin: 0 0 10px; align-self: start; }
+    #list { grid-column: 2; grid-row: 2 / 4; grid-template-columns: 1fr 1fr; }
+    #input { min-height: 70px; }
+  }
+
+  /* ---------- display ---------- */
+  #show { position: fixed; inset: 0; z-index: 10; display: none; background: #fff; color: var(--navy); }
+  #show.open { display: flex; flex-direction: column; }
+  #show.bold { background: var(--navy); color: var(--yellow); }
+  #stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+    padding: calc(var(--st) + 20px) calc(var(--sr) + 22px) 16px calc(var(--sl) + 22px); }
+  #show.flip #big { transform: rotate(180deg); }
+  #big { width: 100%; text-align: center; font-family: var(--slab); font-weight: 700; line-height: 1.12;
+    overflow-wrap: normal; word-break: normal; hyphens: none; }
+  #bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    padding: 8px calc(var(--sr) + 14px) calc(var(--sb) + 12px) calc(var(--sl) + 14px); }
+  #bar button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; font-weight: 700;
+    padding: 10px 4px; border-radius: 12px; background: transparent; color: inherit;
+    border: 1.5px solid rgba(17,26,43,.15); }
+  #bar button svg { font-size: 18px; }
+  #show.bold #bar button { border-color: rgba(245,207,74,.35); }
+  #show.bold #boldBtn, #show.flip #flipBtn { border-color: currentColor; }
+  @media (orientation: landscape) {
+    #show.open { flex-direction: row; }
+    #stage { padding: calc(var(--st) + 16px) 16px calc(var(--sb) + 16px) calc(var(--sl) + 28px); }
+    #bar { grid-template-columns: 1fr; grid-auto-rows: 1fr; width: calc(84px + var(--sr));
+      padding: calc(var(--st) + 14px) calc(var(--sr) + 14px) calc(var(--sb) + 14px) 0; }
+    #bar button { justify-content: center; }
+  }
+
+  #toast { position: fixed; left: 50%; top: calc(var(--st) + 12px); transform: translateX(-50%);
+    background: var(--navy); color: #fff; padding: 9px 15px; border-radius: 12px; font-size: 15px; z-index: 20;
+    opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
+  <symbol id="i-speak" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><path d="M7 20V4M3 8l4-4 4 4M17 4v16M13 16l4 4 4-4"/></symbol>
+  <symbol id="i-bold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></symbol>
+  <symbol id="i-micoff" viewBox="0 0 24 24"><path d="m2 2 20 20M9 9v3a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.7M19 10v2a7 7 0 0 1-.1 1.2M5 10v2a7 7 0 0 0 11.9 5M12 19v3"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+</svg>
+
+<header>
+  <div>
+    <h1>Speak For Me</h1>
+    <div class="sub">Tap a phrase to show it big</div>
+  </div>
+  <span class="badge"><svg><use href="#i-micoff"/></svg>VOICE REST</span>
+</header>
+
+<section class="compose">
+  <div class="compose-head">
+    <span class="label">TYPE OR PASTE</span>
+    <div class="mini">
+      <button id="pasteBtn"><svg><use href="#i-paste"/></svg>Paste</button>
+      <button id="saveBtn"><svg><use href="#i-star"/></svg>Save</button>
+    </div>
+  </div>
+  <textarea id="input" placeholder="Anything you want to say…" autocapitalize="sentences"></textarea>
+  <div class="actions">
+    <button id="clearBtn">Clear</button>
+    <button id="speakBtn"><svg><use href="#i-speak"/></svg>Speak</button>
+    <button id="showBtn">Show</button>
+  </div>
+</section>
+
+<nav id="tabs"></nav>
+<div id="list"></div>
+
+<div id="show">
+  <div id="stage"><div id="big"></div></div>
+  <div id="bar">
+    <button id="backBtn"><svg><use href="#i-back"/></svg>Back</button>
+    <button id="sSpeak"><svg><use href="#i-speak"/></svg>Speak</button>
+    <button id="flipBtn"><svg><use href="#i-flip"/></svg>Flip</button>
+    <button id="boldBtn"><svg><use href="#i-bold"/></svg>Bold</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const DEFAULTS = {
+  "Basics": [
+    "I lost my voice. I can hear you fine.",
+    "Give me a second to type.",
+    "Yes", "No", "Thank you!",
+    "Could you repeat that?",
+    "Could you speak a little louder?",
+    "Could you write that down?",
+    "Excuse me", "Sorry!", "I agree", "Haha",
+    "Where is the restroom?",
+    "I'm OK — I just can't talk today.",
+  ],
+  "Meeting people": [
+    "Nice to meet you! I am Julia, Engagement Manager at DataArt.",
+    "Nice to meet you!",
+    "What do you work on?",
+    "What brings you to the conference?",
+    "Let's connect on LinkedIn!",
+    "Can I scan your badge?",
+    "Could you email me the details?",
+    "Great talking with you!",
+  ],
+  "Sessions": [
+    "Great talk, thank you!",
+    "Do you have the slides online?",
+    "Can I ask a question? I'll type it.",
+    "Is this seat taken?",
+    "Where is this session?",
+    "Where can I learn more about this?",
+  ],
+  "Food and drink": [
+    "A tea with honey, please.",
+    "A coffee, please.",
+    "Water, please. No ice.",
+    "Is this vegetarian?",
+    "Just this, thank you.",
+  ],
+};
+const STORE = "speakforme.v1";
+const $ = id => document.getElementById(id);
+let state = load();
+let tab = state.phrases[state.tab] || state.tab === "Recent" ? state.tab : "Basics";
+let showText = "", wakeLock = null;
+
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.phrases) return s; } catch {}
+  return { phrases: Object.assign(structuredClone(DEFAULTS), { "Mine": [] }), recent: [], bold: false };
+}
+function save() { state.tab = tab; localStorage.setItem(STORE, JSON.stringify(state)); }
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 1500); }
+
+function renderTabs() {
+  const el = $("tabs"); el.innerHTML = "";
+  for (const name of [...Object.keys(state.phrases), "Recent"]) {
+    const b = document.createElement("button");
+    b.textContent = name; if (name === tab) b.className = "on";
+    b.onclick = () => { tab = name; save(); renderTabs(); renderList(); $("list").scrollTop = 0; };
+    el.appendChild(b);
+  }
+}
+function renderList() {
+  const el = $("list"); el.innerHTML = "";
+  const items = tab === "Recent" ? state.recent : state.phrases[tab];
+  if (!items.length) {
+    const h = document.createElement("div"); h.className = "hint";
+    h.textContent = tab === "Recent" ? "Phrases you show or speak will appear here."
+                  : "Type a phrase above and tap Save to keep it here.";
+    el.appendChild(h);
+  }
+  items.forEach((text, i) => {
+    const b = document.createElement("button"); b.className = "phrase";
+    const s = document.createElement("span"); s.textContent = text; b.appendChild(s);
+    if (tab === "Mine") {
+      const d = document.createElement("button"); d.className = "del"; d.setAttribute("aria-label", "Delete");
+      d.innerHTML = '<svg><use href="#i-x"/></svg>';
+      d.onclick = e => { e.stopPropagation(); if (confirm("Delete this phrase?")) { items.splice(i, 1); save(); renderList(); } };
+      b.appendChild(d);
+    } else b.insertAdjacentHTML("beforeend", '<svg><use href="#i-expand"/></svg>');
+    b.onclick = () => openShow(text);
+    el.appendChild(b);
+  });
+}
+function addRecent(text) {
+  if (!text) return;
+  state.recent = [text, ...state.recent.filter(r => r !== text)].slice(0, 30); save();
+}
+
+/* ---------- display: text grows to fill the screen ---------- */
+function fit() {
+  const big = $("big"), st = $("stage"), cs = getComputedStyle(st);
+  const W = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const H = st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  let lo = 14, hi = 360;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1; big.style.fontSize = mid + "px";
+    (big.scrollHeight <= H && big.scrollWidth <= W) ? lo = mid : hi = mid;
+  }
+  big.style.fontSize = lo + "px";
+}
+async function openShow(text) {
+  text = (text || "").trim(); if (!text) { toast("Type something first"); return; }
+  showText = text; $("big").textContent = text;
+  $("show").classList.toggle("bold", !!state.bold);
+  $("show").classList.remove("flip");
+  $("show").classList.add("open"); fit(); addRecent(text);
+  try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
+}
+function closeShow() {
+  $("show").classList.remove("open");
+  try { wakeLock?.release(); } catch {} wakeLock = null;
+  if (tab === "Recent") renderList();
+}
+const refit = () => { if ($("show").classList.contains("open")) fit(); };
+window.addEventListener("resize", refit);
+window.addEventListener("orientationchange", () => setTimeout(refit, 200));
+
+/* ---------- speech ---------- */
+let voice = null;
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang.startsWith("en"));
+  voice = vs.find(v => /premium|enhanced/i.test(v.name) && /Ava|Samantha|Zoe|Allison|Susan/.test(v.name))
+       || vs.find(v => /Ava|Samantha|Zoe|Allison|Susan|Karen|Moira/.test(v.name))
+       || vs.find(v => v.localService) || vs[0] || null;
+}
+if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text) {
+  text = (text || "").trim(); if (!text) { toast("Type something first"); return; }
+  if (!("speechSynthesis" in window)) { toast("Speech isn't supported here"); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  if (voice) u.voice = voice; u.rate = 0.95;
+  speechSynthesis.speak(u); addRecent(text);
+}
+
+/* ---------- wiring ---------- */
+$("pasteBtn").onclick = async () => {
+  try { const t = (await navigator.clipboard.readText()).trim();
+    if (t) { $("input").value = t; openShow(t); } else toast("Clipboard is empty"); }
+  catch { $("input").focus(); toast("Tap the box, then Paste"); }
+};
+$("showBtn").onclick = () => { $("input").blur(); openShow($("input").value); };
+$("speakBtn").onclick = () => speak($("input").value);
+$("clearBtn").onclick = () => { $("input").value = ""; $("input").focus(); };
+$("saveBtn").onclick = () => {
+  const t = $("input").value.trim(); if (!t) { toast("Type a phrase first"); return; }
+  if (!state.phrases.Mine.includes(t)) state.phrases.Mine.unshift(t);
+  tab = "Mine"; save(); renderTabs(); renderList(); toast("Saved to Mine");
+};
+$("input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("input").blur(); openShow($("input").value); }
+});
+$("backBtn").onclick = closeShow;
+$("big").onclick = closeShow;
+$("sSpeak").onclick = () => speak(showText);
+$("flipBtn").onclick = () => $("show").classList.toggle("flip");
+$("boldBtn").onclick = () => { state.bold = !state.bold; save(); $("show").classList.toggle("bold", state.bold); };
+
+renderTabs(); renderList();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
