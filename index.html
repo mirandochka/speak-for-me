@@ -285,11 +285,12 @@ window.addEventListener("resize", refit);
 window.addEventListener("orientationchange", () => setTimeout(refit, 200));
 
 /* ---------- speech ---------- */
-// iOS mutes web speech when the ring/silent switch is on. Asking for a "playback"
-// audio session and playing a silent clip from a tap routes sound past the switch.
-try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
-const unlock = new Audio("silence.wav");
-unlock.playsInline = true;
+// Built-in phrases play pre-recorded clips: an <audio> element plays even when
+// iOS web speech is muted or broken. Typed text falls back to web speech.
+let clips = {};
+fetch("audio/map.json").then(r => r.json()).then(m => clips = m).catch(() => {});
+const player = new Audio();
+player.playsInline = true;
 let voice = null;
 function pickVoice() {
   // only on-device voices: iOS lists downloadable voices that play silently
@@ -299,8 +300,13 @@ function pickVoice() {
 if ("speechSynthesis" in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function speak(text) {
   text = (text || "").trim(); if (!text) { toast("Type something first"); return; }
+  addRecent(text);
+  if (clips[text]) {
+    player.pause(); player.src = clips[text]; player.currentTime = 0;
+    player.play().catch(e => toast("Audio blocked: " + e.name));
+    return;
+  }
   if (!("speechSynthesis" in window)) { toast("Speech isn't supported here"); return; }
-  unlock.play().catch(() => {});
   // cancel() right before speak() makes Safari drop the new utterance
   if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
   speechSynthesis.resume();
@@ -308,8 +314,12 @@ function speak(text) {
   u.lang = voice ? voice.lang : "en-US";
   if (voice) u.voice = voice;
   u.rate = 0.95; u.volume = 1;
+  let started = false;
+  u.onstart = () => { started = true; };
   u.onerror = e => { if (e.error !== "interrupted" && e.error !== "canceled") toast("Speech error: " + e.error); };
-  speechSynthesis.speak(u); addRecent(text);
+  speechSynthesis.speak(u);
+  setTimeout(() => { if (!started && !speechSynthesis.speaking)
+    toast("iPhone blocked speech — turn off Silent mode"); }, 1500);
 }
 
 /* ---------- wiring ---------- */
